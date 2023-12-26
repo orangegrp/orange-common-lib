@@ -1,5 +1,5 @@
 import chalk from "chalk"
-
+import util from "util";
 
 interface Logger {
     /**
@@ -43,10 +43,10 @@ class BaseLogger {
     /**
      * Array of past logs (if storelog is set to true)
      */
-    logs: string[] = []
-    private _storelog = false
+    logs: string[] = [];
+    private _storelog = false;
     private _webhook: string | undefined;
-    private webhook_queue: string[] = []
+    private webhook_queue: string[] = [];
     private webhook_interval: NodeJS.Timeout | undefined;
 
     /**
@@ -84,7 +84,7 @@ class BaseLogger {
                 this.logs.shift()
             }
         }
-        this.onlog(msg)
+        this.onlog(msg);
     }
     private logWebhook(msg: string) {
         this.webhook_queue.push(msg);
@@ -112,7 +112,7 @@ class BaseLogger {
         }
     }
     private static get formatdate() {
-        return chalk.cyan("[" + new Date().toDateString() + "] [" + new Date().toTimeString().split(" GMT")[0] + "] ")
+        return chalk.cyan(`[ ${new Date().toISOString()}] `);
     }
 }
 
@@ -121,31 +121,32 @@ const logger = new BaseLogger();
 class PrefixLogger implements Logger {
     private prefix: string;
     constructor(prefix: string) {
-        this.prefix = prefix
+        this.prefix = prefix;
     }
     log(msg: string) {
-        logger.log(msg, this.prefix)
+        logger.log(msg, this.prefix);
     }
     error(msg: Error | string) {
         if (typeof(msg) != "string") {
-            msg = `${msg.name}: ${msg.message}`;
+            //msg = `${msg.name}: ${msg.message}`;
+            msg = util.inspect(msg, { depth: null });
         }
-        logger.log(chalk.red(msg), this.prefix)
+        logger.log(chalk.red(msg), this.prefix);
     }
     warn(msg: string) {
-        logger.log(chalk.yellow(msg), this.prefix)
+        logger.log(chalk.yellow(msg), this.prefix);
     }
     sublogger(subname: string) {
         return new PrefixLogger(this.prefix + " > " + subname)
     }
     info(msg: string) {
-        logger.log(chalk.blue(msg), this.prefix)
+        logger.log(chalk.blue(msg), this.prefix);
     }
     verbose(msg: string) {
-        logger.log(chalk.gray(msg), this.prefix, false)
+        logger.log(chalk.gray(msg), this.prefix, false);
     }
     ok(msg: string) {
-        logger.log(chalk.green(msg), this.prefix)
+        logger.log(chalk.green(msg), this.prefix);
     }
 }
 
