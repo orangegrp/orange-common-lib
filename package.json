@@ -14,5 +14,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "BSD-3-Clause"
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "chalk": "^5.3.0"
+  }
 }
