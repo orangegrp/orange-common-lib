@@ -61,7 +61,7 @@ class BaseLogger {
     set webhook(value: string) {
         this._webhook = value;
         if (this.webhook_interval) clearInterval(this.webhook_interval);
-        this.webhook_interval = setInterval(this.sendWebhook, 2100);
+        this.webhook_interval = setInterval(() => this.sendWebhook(), 2100);
     }
 
     /**
@@ -93,21 +93,20 @@ class BaseLogger {
         if (this.webhook_queue.length < 1 || !this._webhook) {
             return;
         }
-    
+
         const next_msg = this.webhook_queue.splice(0, 1).at(0);
     
         if (next_msg != undefined) {
-            fetch(new URL(process.env.LOGGER_WEBHOOK_URI!), {
+            fetch(new URL(this._webhook), {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: `\`\`\`ansi\n${next_msg.split('\`\`\`').join('`​`​`')}\`\`\`` })
             }).then(async (response) => {
                 if (response.status !== 200 && response.status !== 201 && response.status !== 204) {
-                    this.log(`failed to send log to discord: ${response.status} ${response.statusText}, re-queuing...`, "logger", false);
-                    //webhook_queue.splice(0, 0, next_msg);           
-                    this.webhook_queue.push(`[DELAYED LOG EVENT] ${next_msg}`); 
+                    this.log(`Failed to send log to Discord: ${response.status} ${response.statusText}, re-queuing...`, "logger", false);      
+                    this.webhook_queue.push(`::DELAYED LOG:: ${next_msg}`); 
                 }
             }).catch((err) => {
-                this.log(`failed to send log to discord: ${err}, WILL NOT try re-queuing...`, "logger", false);          
+                this.log(`Failed to send log to Discord: ${err}, WILL NOT try re-queuing...`, "logger", false);          
             });
         }
     }
@@ -117,6 +116,9 @@ class BaseLogger {
 }
 
 const logger = new BaseLogger();
+console.log(process.env.DISCORD_WEBHOOK_LOGGER_URL);
+if (process.env.DISCORD_WEBHOOK_LOGGER_URL)
+    logger.webhook = process.env.DISCORD_WEBHOOK_LOGGER_URL;
 
 class PrefixLogger implements Logger {
     private prefix: string;
