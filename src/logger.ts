@@ -1,5 +1,5 @@
 import "dotenv/config";
-import chalk from "chalk"
+import chalk, { type ChalkInstance } from "chalk"
 import util from "util";
 
 interface Logger {
@@ -38,6 +38,11 @@ interface Logger {
      * @param msg Message content
      */
     info(msg: string): void;
+    /**
+     * Log an object directly. (any color, defaults to white)
+     * @param msg any object
+     */
+    object(msg: any, color?: ChalkInstance): void;
 }
 
 class BaseLogger {
@@ -75,6 +80,14 @@ class BaseLogger {
         const fullMsg = BaseLogger.formatdate + (prefix ? chalk.magenta(`[${prefix}] `) : "") + msg;
         this.dolog(fullMsg)
         if (logWebhook) this.logWebhook(fullMsg);
+    }
+    /**
+     * logs a message without outputting to console
+     */
+    silentLog(msg: string, prefix?: string) {
+        const fullMsg = BaseLogger.formatdate + (prefix ? chalk.magenta(`[${prefix}] `) : "") + msg;
+        this.dolog(fullMsg, true);
+        this.logWebhook(fullMsg);
     }
     private dolog(msg: string, nolog = false) {
         if (!nolog)
@@ -150,6 +163,11 @@ class PrefixLogger implements Logger {
     }
     ok(msg: string) {
         logger.log(chalk.green(msg), this.prefix);
+    }
+    object(msg: any, color: ChalkInstance = chalk.white) {
+        logger.silentLog(color(util.inspect(msg, { depth: null })));
+        logger.log("", this.prefix, false);
+        console.log(msg);
     }
 }
 
