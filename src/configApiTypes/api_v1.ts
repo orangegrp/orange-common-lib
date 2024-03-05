@@ -22,7 +22,7 @@ enum ConfigValueType {
 }
 
 
-type RealValueType<Type extends ConfigValueType> = 
+type ReturnValueType<Type extends ConfigValueType> = 
     Type extends ConfigValueType.string                             ? string
     : Type extends ConfigValueType.number | ConfigValueType.integer ? number
     : Type extends ConfigValueType.member | ConfigValueType.user    ? ApiDiscordUser
@@ -30,7 +30,7 @@ type RealValueType<Type extends ConfigValueType> =
     : Type extends ConfigValueType.object                           ? any
     : never;
 
-type DefaultValueType<Type extends ConfigValueType> = 
+type RealValueType<Type extends ConfigValueType> = 
     Type extends ConfigValueType.number | ConfigValueType.integer ? number
     : Type extends ConfigValueType.object                         ? any
     : string;
@@ -48,17 +48,17 @@ type ConfigValueBase<Type extends ConfigValueType> = {
     /** Should this be an array of values? */
     array: true,
     /** Default value */
-    default?: DefaultValueType<Type>[]
+    default?: RealValueType<Type>[]
     /** Max number of values in the array */
     maxCount?: number,
     /** Array of values */
-    value: RealValueType<Type>[] | null
+    value: ReturnValueType<Type>[] | null
 } | {
     array?: false | undefined,
     /** Default value */
-    default?: DefaultValueType<Type>
+    default?: RealValueType<Type>
     /** Value */
-    value: RealValueType<Type> | null;
+    value: ReturnValueType<Type> | null;
 })
 
 
