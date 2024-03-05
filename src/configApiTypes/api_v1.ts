@@ -161,4 +161,4 @@ type ApiError = {
 
 
 export type { SettingsList, ApiConfigValue, ValueEdits, ValueEditResult, ApiGuild, ApiError, ApiDiscordUser, ApiDiscordChannel }
-export { ApiErrorType, ValueValidationResults, ValueValidationResult }
+export { ApiErrorType, ValueValidationResults, ValueValidationResult, ConfigValueType }
