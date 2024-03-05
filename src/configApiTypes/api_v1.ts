@@ -117,6 +117,7 @@ enum ValueValidationResult {
     invalid_name = "invalid_name",
     invalid_type = "invalid_type",
     invalid_value = "invalid_value",
+    readonly_value = "readonly_value",
     no_permission = "no_permission",
 }
 type ValueValidationResults = {
