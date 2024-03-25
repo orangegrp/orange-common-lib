@@ -3,7 +3,7 @@
 type ApiDiscordChannel = {
     name: string,
     id: string,
-    type: "voice" | "text" | "thread"
+    type: "voice" | "text" | "thread" | "unknown"
 }
 
 type ApiDiscordUser = {
