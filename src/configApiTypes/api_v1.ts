@@ -2,13 +2,38 @@
 
 type ApiDiscordChannel = {
     name: string,
-    id: string
+    id: string,
+    type: "voice" | "text" | "thread"
 }
 
 type ApiDiscordUser = {
     name: string,
     id: string,
     icon: string | null
+}
+type ApiDiscordMember = {
+    username: string,
+    id: string,
+    icon: string | null,
+    globalName: string,
+    nickname: string | null,
+}
+
+type ApiDiscordChannelList = {
+    complete: boolean,
+    count: number,
+    total: number,
+    channels: ApiDiscordChannel[]
+}
+
+type ApiDiscordMemberList = {
+    /** Is this is a complete list? (true means there is no need for further searching) */
+    complete: boolean,
+    /** How many were returned */
+    count: number,
+    /** How many are there? */
+    total: number,
+    members: ApiDiscordMember[]
 }
 
 enum ConfigValueType {
@@ -161,5 +186,5 @@ type ApiError = {
 }
 
 
-export type { SettingsList, ApiConfigValue, ValueEdits, ValueEditResult, ApiGuild, ApiError, ApiDiscordUser, ApiDiscordChannel }
+export type { SettingsList, ApiConfigValue, ValueEdits, ValueEditResult, ApiGuild, ApiError, ApiDiscordUser, ApiDiscordMember, ApiDiscordMemberList, ApiDiscordChannel, ApiDiscordChannelList }
 export { ApiErrorType, ValueValidationResults, ValueValidationResult, ConfigValueType }
