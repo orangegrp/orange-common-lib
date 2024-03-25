@@ -50,7 +50,8 @@ enum ConfigValueType {
 type ReturnValueType<Type extends ConfigValueType> = 
     Type extends ConfigValueType.string                             ? string
     : Type extends ConfigValueType.number | ConfigValueType.integer ? number
-    : Type extends ConfigValueType.member | ConfigValueType.user    ? ApiDiscordUser
+    : Type extends ConfigValueType.user                             ? ApiDiscordUser
+    : Type extends ConfigValueType.member                           ? ApiDiscordMember
     : Type extends ConfigValueType.channel                          ? ApiDiscordChannel
     : Type extends ConfigValueType.object                           ? any
     : never;
