@@ -17,6 +17,8 @@
   "author": "",
   "license": "BSD-3-Clause",
   "dependencies": {
-    "chalk": "^5.3.0"
+    "ansi-to-html": "^0.7.2",
+    "chalk": "^5.3.0",
+    "pocketbase": "^0.21.1"
   }
 }

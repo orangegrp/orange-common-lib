@@ -1,6 +1,30 @@
 import "dotenv/config";
 import chalk, { type ChalkInstance } from "chalk"
 import util from "util";
+import Convert from "ansi-to-html";
+const convert = new Convert();
+
+import pocketbase from "pocketbase";
+const pb = new pocketbase(`https://` +process.env.PB_LOGGER_DOMAIN ?? process.env.PB_DOMAIN!);
+pb.autoCancellation(false);
+
+function initLogger() {
+    console.log(process.env.PB_LOGGER_USERNAME, process.env.PB_LOGGER_PASSWORD, process.env.PB_LOGGER_DOMAIN);
+
+    pb.collection("users").authWithPassword(process.env.PB_LOGGER_USERNAME ?? process.env.PB_USERNAME!, process.env.PB_LOGGER_PASSWORD ?? process.env.PB_PASSWORD!).then(() => {
+        setInterval(() => {
+            pb.collection("users").authRefresh().then(() => { }).catch(() => { });
+        }, 60 * 60 * 1000);
+    }).catch((e) => { 
+        setTimeout(initLogger, 5000);
+    });
+}
+
+function sleep(time: number) {
+    return new Promise(resolve => {
+        setTimeout(resolve, time);
+    });
+}
 
 interface Logger {
     /**
@@ -76,11 +100,13 @@ class BaseLogger {
      */
     onlog = (msg: String) => { }
 
-    log(msg: string, prefix?: string, logWebhook = true) {
+    log(msg: string, prefix?: string, logWebhook = true, pb_level: "Verbose" | "Log" | "Error" | "Warning" = "Verbose") {
         const fullMsg = BaseLogger.formatdate + (prefix ? chalk.magenta(`[${prefix}] `) : "") + msg;
         this.dolog(fullMsg)
         if (logWebhook) this.logWebhook(fullMsg);
-    }
+
+        try { this.pb_log(pb_level, fullMsg); } catch { }
+    }   
     /**
      * logs a message without outputting to console
      */
@@ -103,24 +129,36 @@ class BaseLogger {
     private logWebhook(msg: string) {
         this.webhook_queue.push(msg);
     }
+
+    async pb_log(severity: "Verbose" | "Log" | "Error" | "Warning", msg: string) {
+        while (!pb.authStore.isValid)
+            await sleep(1000);
+        
+        await pb.collection("dash_svclogs").create({
+            level: severity,
+            host: process.env.INSTANCE_NAME ?? await fetch("https://ifconfig.me"),
+            details: convert.toHtml(msg)
+        });
+    }
+
     private sendWebhook() {
         if (this.webhook_queue.length < 1 || !this._webhook) {
             return;
         }
 
         const next_msg = this.webhook_queue.splice(0, 1).at(0);
-    
+
         if (next_msg != undefined) {
             fetch(new URL(this._webhook), {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: `\`\`\`ansi\n${next_msg.split('\`\`\`').join('`​`​`')}\`\`\`` })
             }).then(async (response) => {
                 if (response.status !== 200 && response.status !== 201 && response.status !== 204) {
-                    this.log(`Failed to send log to Discord: ${response.status} ${response.statusText}, re-queuing...`, "logger", false);      
-                    this.webhook_queue.push(`::DELAYED LOG:: ${next_msg}`); 
+                    this.log(`Failed to send log to Discord: ${response.status} ${response.statusText}, re-queuing...`, "logger", false);
+                    this.webhook_queue.push(`::DELAYED LOG:: ${next_msg}`);
                 }
             }).catch((err) => {
-                this.log(`Failed to send log to Discord: ${err}, WILL NOT try re-queuing...`, "logger", false);          
+                this.log(`Failed to send log to Discord: ${err}, WILL NOT try re-queuing...`, "logger", false);
             });
         }
     }
@@ -139,30 +177,31 @@ class PrefixLogger implements Logger {
     constructor(prefix: string) {
         this.prefix = prefix;
     }
+
     log(msg: string) {
-        logger.log(msg, this.prefix);
+        logger.log(msg, this.prefix, true, "Log");
     }
     error(msg: Error | string) {
-        if (typeof(msg) != "string") {
+        if (typeof (msg) != "string") {
             //msg = `${msg.name}: ${msg.message}`;
             msg = util.inspect(msg, { depth: null });
         }
-        logger.log(chalk.red(msg), this.prefix);
+        logger.log(chalk.red(msg), this.prefix, true, "Error");
     }
     warn(msg: string) {
-        logger.log(chalk.yellow(msg), this.prefix);
+        logger.log(chalk.yellow(msg), this.prefix, true, "Warning");
     }
     sublogger(subname: string) {
         return new PrefixLogger(this.prefix + " > " + subname)
     }
     info(msg: string) {
-        logger.log(chalk.blue(msg), this.prefix);
+        logger.log(chalk.blue(msg), this.prefix, true, "Log");
     }
     verbose(msg: string) {
-        logger.log(chalk.gray(msg), this.prefix, false);
+        logger.log(chalk.gray(msg), this.prefix, false, "Verbose");
     }
     ok(msg: string) {
-        logger.log(chalk.green(msg), this.prefix);
+        logger.log(chalk.green(msg), this.prefix, true, "Log");
     }
     object(msg: any, color: ChalkInstance = chalk.white) {
         logger.silentLog(color(util.inspect(msg, { depth: null })));
@@ -183,3 +222,5 @@ function getLogger(prefix: string): Logger {
 export { logger, getLogger }
 
 export type { PrefixLogger, BaseLogger, Logger };
+
+initLogger();
