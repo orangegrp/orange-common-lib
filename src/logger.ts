@@ -153,8 +153,8 @@ class BaseLogger {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: `\`\`\`ansi\n${next_msg.split('\`\`\`').join('`​`​`')}\`\`\`` })
             }).then(async (response) => {
-                if (response.status !== 200 && response.status !== 201 && response.status !== 204) {
-                    this.log(`Failed to send log to Discord: ${response.status} ${response.statusText}, re-queuing...`, "logger", false);
+                if (!response.status.toString().startsWith("2")) {
+                    this.log(`Failed to send log to Discord: ${response.status} ${response.statusText}, re-queuing...`, "logger", false, "Verbose");
                     this.webhook_queue.push(`::DELAYED LOG:: ${next_msg}`);
                 }
             }).catch((err) => {
