@@ -9,8 +9,6 @@ const pb = new pocketbase(`https://` +process.env.PB_LOGGER_DOMAIN ?? process.en
 pb.autoCancellation(false);
 
 function initLogger() {
-    console.log(process.env.PB_LOGGER_USERNAME, process.env.PB_LOGGER_PASSWORD, process.env.PB_LOGGER_DOMAIN);
-
     pb.collection("users").authWithPassword(process.env.PB_LOGGER_USERNAME ?? process.env.PB_USERNAME!, process.env.PB_LOGGER_PASSWORD ?? process.env.PB_PASSWORD!).then(() => {
         setInterval(() => {
             pb.collection("users").authRefresh().then(() => { }).catch(() => { });
