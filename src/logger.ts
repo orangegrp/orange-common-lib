@@ -5,7 +5,7 @@ import Convert from "ansi-to-html";
 const convert = new Convert();
 
 import pocketbase from "pocketbase";
-const pb = new pocketbase(`https://` +process.env.PB_LOGGER_DOMAIN ?? process.env.PB_DOMAIN!);
+const pb = new pocketbase(`https://` + process.env.PB_LOGGER_DOMAIN ?? process.env.PB_DOMAIN!);
 pb.autoCancellation(false);
 
 function initLogger() {
@@ -13,7 +13,7 @@ function initLogger() {
         setInterval(() => {
             pb.collection("users").authRefresh().then(() => { }).catch(() => { });
         }, 60 * 60 * 1000);
-    }).catch((e) => { 
+    }).catch((e) => {
         setTimeout(initLogger, 5000);
     });
 }
@@ -75,6 +75,7 @@ class BaseLogger {
     private _storelog = false;
     private _webhook: string | undefined;
     private webhook_queue: string[] = [];
+    private pb_queue: { severity: "Verbose" | "Log" | "Error" | "Warning", msg: string }[] = [];
     private webhook_interval: NodeJS.Timeout | undefined;
 
     /**
@@ -103,8 +104,10 @@ class BaseLogger {
         this.dolog(fullMsg)
         if (logWebhook) this.logWebhook(fullMsg);
 
-        try { this.pb_log(pb_level, fullMsg); } catch { }
-    }   
+        if (pb_level != "Verbose") {
+            try { this.pb_log(pb_level, fullMsg); } catch { }
+        }
+    }
     /**
      * logs a message without outputting to console
      */
@@ -128,18 +131,30 @@ class BaseLogger {
         this.webhook_queue.push(msg);
     }
 
-    async pb_log(severity: "Verbose" | "Log" | "Error" | "Warning", msg: string) {
+    async pb_log_loop() {
+        if (this.pb_queue.length < 1)
+            return;
+
         while (!pb.authStore.isValid)
             await sleep(1000);
-        
-        await pb.collection("dash_svclogs").create({
+
+
+        const { severity, msg } = this.pb_queue.splice(0, 1).at(0)!;
+
+        pb.collection("dash_svclogs").create({
             level: severity,
             host: process.env.INSTANCE_NAME ?? await fetch("https://ifconfig.me"),
             details: convert.toHtml(msg)
         });
     }
 
+    async pb_log(severity: "Verbose" | "Log" | "Error" | "Warning", msg: string) {
+        this.pb_queue.push({ severity, msg });
+    }
+
     private sendWebhook() {
+        this.pb_log_loop();
+
         if (this.webhook_queue.length < 1 || !this._webhook) {
             return;
         }
