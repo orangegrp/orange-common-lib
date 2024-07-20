@@ -120,7 +120,7 @@ type ConfigValueChannel = ConfigValueBase<ConfigValueType.channel>;
 type ConfigValueMember = ConfigValueBase<ConfigValueType.member>;
 
 type ConfigValueObject = ConfigValueBase<ConfigValueType.object> & {
-    schema: any;
+    children: any;
 }
 
 type ApiConfigValue = ConfigValueString | ConfigValueNumber | ConfigValueInteger | ConfigValueUser | ConfigValueChannel | ConfigValueMember | ConfigValueObject;
