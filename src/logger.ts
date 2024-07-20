@@ -1,6 +1,6 @@
 import chalk, { type ChalkInstance } from "chalk"
 import util from "util";
-import { environment, ready } from "./envcfg.js";
+import { environment } from "./envcfg.js";
 import { sleep } from "./index.js";
 
 interface Logger {
@@ -135,9 +135,6 @@ class BaseLogger {
 const logger = new BaseLogger();
 
 (async()  => {
-    while (!ready)
-        await sleep(1000);
-
     if (environment.DISCORD_WEBHOOK_LOGGER_URL)
         logger.webhook = environment.DISCORD_WEBHOOK_LOGGER_URL;
 })();

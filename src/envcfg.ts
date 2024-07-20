@@ -1,46 +1,50 @@
 import dotenv from "dotenv";
+import deasync from "deasync";
 import { createClient } from "@supabase/supabase-js";
 
-let ready = false;
 const envData: OrangeEnvCfg = {};
 
-function initEnv() {
-    const localVars = dotenv.config();
+function initEnv(): Promise<boolean> {
+    return new Promise(async (resolve, reject) => {
+        const localVars = dotenv.config();
 
-    if (localVars.parsed) {
-        for (const key in localVars.parsed) {
-            process.env[key] = envData[key] = localVars.parsed[key];
+        if (localVars.parsed) {
+            for (const key in localVars.parsed) {
+                process.env[key] = envData[key] = localVars.parsed[key];
+            }
+            console.log("[ENVIRONMENT CONFIG] Loaded local environment variables!");
         }
-    }
 
-    if (!process.env.SUPABASE_SERVER) throw "SUPABASE_SERVER is not set!";
-    if (!process.env.SUPABASE_ANON_KEY) throw "SUPABASE_ANON_KEY is not set!";
+        if (!process.env.SUPABASE_SERVER) throw "SUPABASE_SERVER is not set!";
+        if (!process.env.SUPABASE_ANON_KEY) throw "SUPABASE_ANON_KEY is not set!";
 
-    const supabase = createClient(process.env.SUPABASE_SERVER, process.env.SUPABASE_ANON_KEY);
+        const supabase = createClient(process.env.SUPABASE_SERVER, process.env.SUPABASE_ANON_KEY);
 
-    if (!supabase) throw "Failed to initialize Supabase!";
-
-    (async () => {
+        if (!supabase) throw "Failed to initialize Supabase!";
         if (!process.env.SUPABASE_USERNAME) throw "SUPABASE_USERNAME is not set!";
         if (!process.env.SUPABASE_PASSWORD) throw "SUPABASE_PASSWORD is not set!";
 
-        await supabase.auth.signInWithPassword({ email: process.env.SUPABASE_USERNAME, password: process.env.SUPABASE_PASSWORD });
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email: process.env.SUPABASE_USERNAME, password: process.env.SUPABASE_PASSWORD });
 
+        if (signInError) reject(signInError);
+        
         const { data: remoteVars, error } = await supabase.from(`orange_bot_environment_${process.env.NODE_ENV === "production" ? "prod" : "dev"}`).select("*");
 
-        if (error) throw error;
+        if (error) reject(error);
 
         if (remoteVars) {
             for (const { key, value } of remoteVars) {
                 if (process.env[key] !== undefined) {
+                    console.log("[ENVIRONMENT CONFIG] Remote environment variable conflicts with local one. The local one will take precedence: ", key);
                     continue;
                 }
                 process.env[key] = envData[key] = value;
             }
+            console.log("[ENVIRONMENT CONFIG] Loaded remote environment variables!");
         }
 
-        setTimeout(() => ready = true, 1000);
-    })();
+        resolve(true);
+    })
 }
 
 type OrangeEnvCfg = {
@@ -84,4 +88,4 @@ type OrangeEnvCfg = {
     SYS_PROMPT_PFX?: string;
 }
 
-export { envData as environment, ready, initEnv };
+export { envData as environment, initEnv };
