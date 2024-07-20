@@ -39,8 +39,8 @@ function initEnv() {
             }
         }
 
-        ready = true;
-    })()
+        setTimeout(() => ready = true, 1000);
+    })();
 }
 
 type OrangeEnvCfg = {
