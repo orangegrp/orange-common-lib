@@ -1,28 +1,7 @@
-import "dotenv/config";
 import chalk, { type ChalkInstance } from "chalk"
 import util from "util";
-import Convert from "ansi-to-html";
-const convert = new Convert();
-
-import pocketbase from "pocketbase";
-const pb = new pocketbase(`https://` + process.env.PB_LOGGER_DOMAIN ?? process.env.PB_DOMAIN!);
-pb.autoCancellation(false);
-
-function initLogger() {
-    pb.collection("users").authWithPassword(process.env.PB_LOGGER_USERNAME ?? process.env.PB_USERNAME!, process.env.PB_LOGGER_PASSWORD ?? process.env.PB_PASSWORD!).then(() => {
-        setInterval(() => {
-            pb.collection("users").authRefresh().then(() => { }).catch(() => { });
-        }, 60 * 60 * 1000);
-    }).catch((e) => {
-        setTimeout(initLogger, 5000);
-    });
-}
-
-function sleep(time: number) {
-    return new Promise(resolve => {
-        setTimeout(resolve, time);
-    });
-}
+import { environment, ready } from "./envcfg.js";
+import { sleep } from "./index.js";
 
 interface Logger {
     /**
@@ -75,7 +54,6 @@ class BaseLogger {
     private _storelog = false;
     private _webhook: string | undefined;
     private webhook_queue: string[] = [];
-    private pb_queue: { severity: "Verbose" | "Log" | "Error" | "Warning", msg: string }[] = [];
     private webhook_interval: NodeJS.Timeout | undefined;
 
     /**
@@ -99,15 +77,12 @@ class BaseLogger {
      */
     onlog = (msg: String) => { }
 
-    log(msg: string, prefix?: string, logWebhook = true, pb_level: "Verbose" | "Log" | "Error" | "Warning" = "Verbose") {
+    log(msg: string, prefix?: string, logWebhook = true, webui_level: "Verbose" | "Log" | "Error" | "Warning" = "Verbose") {
         const fullMsg = BaseLogger.formatdate + (prefix ? chalk.magenta(`[${prefix}] `) : "") + msg;
         this.dolog(fullMsg)
         if (logWebhook) this.logWebhook(fullMsg);
-
-        if (pb_level != "Verbose") {
-            try { this.pb_log(pb_level, fullMsg); } catch { }
-        }
     }
+
     /**
      * logs a message without outputting to console
      */
@@ -131,30 +106,7 @@ class BaseLogger {
         this.webhook_queue.push(msg);
     }
 
-    async pb_log_loop() {
-        if (this.pb_queue.length < 1)
-            return;
-
-        while (!pb.authStore.isValid)
-            await sleep(1000);
-
-
-        const { severity, msg } = this.pb_queue.splice(0, 1).at(0)!;
-
-        pb.collection("dash_svclogs").create({
-            level: severity,
-            host: process.env.INSTANCE_NAME ?? await fetch("https://ifconfig.me"),
-            details: convert.toHtml(msg)
-        });
-    }
-
-    async pb_log(severity: "Verbose" | "Log" | "Error" | "Warning", msg: string) {
-        this.pb_queue.push({ severity, msg });
-    }
-
     private sendWebhook() {
-        this.pb_log_loop();
-
         if (this.webhook_queue.length < 1 || !this._webhook) {
             return;
         }
@@ -168,7 +120,7 @@ class BaseLogger {
             }).then(async (response) => {
                 if (!response.status.toString().startsWith("2")) {
                     this.log(`Failed to send log to Discord: ${response.status} ${response.statusText}, re-queuing...`, "logger", false, "Verbose");
-                    this.webhook_queue.push(`::DELAYED LOG:: ${next_msg}`);
+                    this.webhook_queue.push(`${next_msg}`);
                 }
             }).catch((err) => {
                 this.log(`Failed to send log to Discord: ${err}, WILL NOT try re-queuing...`, "logger", false);
@@ -181,9 +133,15 @@ class BaseLogger {
 }
 
 const logger = new BaseLogger();
-console.log(process.env.DISCORD_WEBHOOK_LOGGER_URL);
-if (process.env.DISCORD_WEBHOOK_LOGGER_URL)
-    logger.webhook = process.env.DISCORD_WEBHOOK_LOGGER_URL;
+
+(async()  => {
+    while (!ready)
+        await sleep(1000);
+
+    if (environment.DISCORD_WEBHOOK_LOGGER_URL)
+        logger.webhook = environment.DISCORD_WEBHOOK_LOGGER_URL;
+})();
+
 
 class PrefixLogger implements Logger {
     private prefix: string;
@@ -196,7 +154,6 @@ class PrefixLogger implements Logger {
     }
     error(msg: Error | string) {
         if (typeof (msg) != "string") {
-            //msg = `${msg.name}: ${msg.message}`;
             msg = util.inspect(msg, { depth: null });
         }
         logger.log(chalk.red(msg), this.prefix, true, "Error");
@@ -233,7 +190,4 @@ function getLogger(prefix: string): Logger {
 }
 
 export { logger, getLogger }
-
 export type { PrefixLogger, BaseLogger, Logger };
-
-initLogger();
