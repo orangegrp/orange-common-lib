@@ -43,7 +43,8 @@ enum ConfigValueType {
     user,
     channel,
     member,
-    object
+    object,
+    boolean
 }
 
 
@@ -54,10 +55,12 @@ type ReturnValueType<Type extends ConfigValueType> =
     : Type extends ConfigValueType.member                           ? ApiDiscordMember
     : Type extends ConfigValueType.channel                          ? ApiDiscordChannel
     : Type extends ConfigValueType.object                           ? any
+    : Type extends ConfigValueType.boolean                          ? boolean
     : never;
 
 type RealValueType<Type extends ConfigValueType> = 
     Type extends ConfigValueType.number | ConfigValueType.integer ? number
+    : Type extends ConfigValueType.boolean                          ? boolean
     : Type extends ConfigValueType.object                         ? any
     : string;
 
@@ -123,7 +126,9 @@ type ConfigValueObject = ConfigValueBase<ConfigValueType.object> & {
     children: any;
 }
 
-type ApiConfigValue = ConfigValueString | ConfigValueNumber | ConfigValueInteger | ConfigValueUser | ConfigValueChannel | ConfigValueMember | ConfigValueObject;
+type ConfigValueBoolean = ConfigValueBase<ConfigValueType.boolean>;
+
+type ApiConfigValue = ConfigValueString | ConfigValueNumber | ConfigValueInteger | ConfigValueUser | ConfigValueChannel | ConfigValueMember | ConfigValueObject | ConfigValueBoolean;
 
 type Module = {
     module: string,
