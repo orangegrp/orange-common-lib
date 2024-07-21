@@ -52,7 +52,7 @@ function initEnv(): Promise<boolean> {
         }
 
         resolve(true);
-    })
+    });
 }
 
 type OrangeEnvCfg = {
@@ -96,4 +96,4 @@ type OrangeEnvCfg = {
     SYS_PROMPT_PFX?: string;
 }
 
-export { envData as environment, initEnv, log };
+export { envData as environment, initEnv, log as miniLog };
