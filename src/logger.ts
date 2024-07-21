@@ -1,7 +1,6 @@
 import chalk, { type ChalkInstance } from "chalk"
 import util from "util";
 import { environment } from "./envcfg.js";
-import { sleep } from "./index.js";
 
 interface Logger {
     /**

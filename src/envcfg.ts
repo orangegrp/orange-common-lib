@@ -1,8 +1,16 @@
 import dotenv from "dotenv";
-import deasync from "deasync";
+import chalk from "chalk";
 import { createClient } from "@supabase/supabase-js";
 
 const envData: OrangeEnvCfg = {};
+
+function log(msg: string, level: "Verbose" | "Log" | "Error" | "Warning" | "Success" = "Verbose") {
+    if (level == "Verbose") console.log(chalk.cyan(`[ ${new Date().toISOString()}]`), chalk.gray("[ENVCFG]"), chalk.gray(msg));
+    if (level == "Log") console.log(chalk.cyan(`[ ${new Date().toISOString()}]`), chalk.gray("[ENVCFG]"), chalk.white(msg));
+    if (level == "Error") console.log(chalk.cyan(`[ ${new Date().toISOString()}]`), chalk.gray("[ENVCFG]"), chalk.red(msg));
+    if (level == "Warning") console.log(chalk.cyan(`[ ${new Date().toISOString()}]`), chalk.gray("[ENVCFG]"), chalk.yellow(msg));
+    if (level == "Success") console.log(chalk.cyan(`[ ${new Date().toISOString()}]`), chalk.gray("[ENVCFG]"), chalk.green(msg));
+}
 
 function initEnv(): Promise<boolean> {
     return new Promise(async (resolve, reject) => {
@@ -12,35 +20,35 @@ function initEnv(): Promise<boolean> {
             for (const key in localVars.parsed) {
                 process.env[key] = envData[key] = localVars.parsed[key];
             }
-            console.log("[ENVIRONMENT CONFIG] Loaded local environment variables!");
+            log("Loaded local environment variables!", "Success");
         }
 
-        if (!process.env.SUPABASE_SERVER) throw "SUPABASE_SERVER is not set!";
-        if (!process.env.SUPABASE_ANON_KEY) throw "SUPABASE_ANON_KEY is not set!";
+        if (!process.env.SUPABASE_SERVER) { log("SUPABASE_SERVER is not set!", "Error"); reject(false); return; };
+        if (!process.env.SUPABASE_ANON_KEY) { log("SUPABASE_ANON_KEY is not set!", "Error"); reject(false); return; };
 
         const supabase = createClient(process.env.SUPABASE_SERVER, process.env.SUPABASE_ANON_KEY);
 
-        if (!supabase) throw "Failed to initialize Supabase!";
-        if (!process.env.SUPABASE_USERNAME) throw "SUPABASE_USERNAME is not set!";
-        if (!process.env.SUPABASE_PASSWORD) throw "SUPABASE_PASSWORD is not set!";
+        if (!supabase) { log("Failed to connect to Supabase!", "Error"); reject(false); return; };
+        if (!process.env.SUPABASE_USERNAME) { log("SUPABASE_USERNAME is not set!", "Error"); reject(false); return; };
+        if (!process.env.SUPABASE_PASSWORD) { log("SUPABASE_PASSWORD is not set!", "Error"); reject(false); return; };
 
         const { error: signInError } = await supabase.auth.signInWithPassword({ email: process.env.SUPABASE_USERNAME, password: process.env.SUPABASE_PASSWORD });
 
-        if (signInError) reject(signInError);
-        
+        if (signInError) { log("Failed to sign in to Supabase!", "Error"); reject(signInError); return; }
+
         const { data: remoteVars, error } = await supabase.from(`orange_bot_environment_${process.env.NODE_ENV === "production" ? "prod" : "dev"}`).select("*");
 
-        if (error) reject(error);
+        if (error) { log("Failed to load remote environment variables!", "Error"); reject(error); return; }
 
         if (remoteVars) {
             for (const { key, value } of remoteVars) {
                 if (process.env[key] !== undefined) {
-                    console.log("[ENVIRONMENT CONFIG] Remote environment variable conflicts with local one. The local one will take precedence: ", key);
+                    log(`Remote environment variable conflicts with local one. The local one will take precedence: ${key}`, "Warning");
                     continue;
                 }
                 process.env[key] = envData[key] = value;
             }
-            console.log("[ENVIRONMENT CONFIG] Loaded remote environment variables!");
+            log("Loaded remote environment variables!", "Success");
         }
 
         resolve(true);
@@ -88,4 +96,4 @@ type OrangeEnvCfg = {
     SYS_PROMPT_PFX?: string;
 }
 
-export { envData as environment, initEnv };
+export { envData as environment, initEnv, log };
