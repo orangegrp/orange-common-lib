@@ -14,13 +14,29 @@ function log(msg: string, level: "Verbose" | "Log" | "Error" | "Warning" | "Succ
 
 function initEnv(): Promise<boolean> {
     return new Promise(async (resolve, reject) => {
+        if (process.env) {
+            let counter = 0;
+            for (const key in process.env) {
+                const envValue = process.env[key];
+                if (envValue) {
+                    envData[key] = envValue;
+                    counter++;
+                    log(`Imported environment variable ${key}`, "Verbose");
+                }
+            }
+            log(`Loaded ${counter} environment variables!`, "Success");
+        }
+
         const localVars = dotenv.config();
 
         if (localVars.parsed) {
+            let counter = 0;
             for (const key in localVars.parsed) {
                 process.env[key] = envData[key] = localVars.parsed[key];
+                counter++;
+                log(`Imported local environment variable ${key}`, "Verbose");
             }
-            log("Loaded local environment variables!", "Success");
+            log(`Loaded ${counter} local (.env) environment variables!`, "Success");
         }
 
         if (!process.env.SUPABASE_SERVER) { log("SUPABASE_SERVER is not set!", "Error"); reject(false); return; };
@@ -34,21 +50,24 @@ function initEnv(): Promise<boolean> {
 
         const { error: signInError } = await supabase.auth.signInWithPassword({ email: process.env.SUPABASE_USERNAME, password: process.env.SUPABASE_PASSWORD });
 
-        if (signInError) { log("Failed to sign in to Supabase!", "Error"); reject(signInError); return; }
+        if (signInError) { log(`Failed to sign in to Supabase!`, "Error"); reject(signInError); return; }
 
         const { data: remoteVars, error } = await supabase.from(`orange_bot_environment_${process.env.NODE_ENV === "production" ? "prod" : "dev"}`).select("*");
 
-        if (error) { log("Failed to load remote environment variables!", "Error"); reject(error); return; }
+        if (error) { log("Failed to load remote (Supabase) environment variables!", "Error"); reject(error); return; }
 
         if (remoteVars) {
+            let counter = 0;
             for (const { key, value } of remoteVars) {
                 if (process.env[key] !== undefined) {
                     log(`Remote environment variable conflicts with local one. The local one will take precedence: ${key}`, "Warning");
                     continue;
                 }
                 process.env[key] = envData[key] = value;
+                counter++;
+                log(`Imported remote environment variable ${key}`, "Verbose");
             }
-            log("Loaded remote environment variables!", "Success");
+            log(`Loaded ${counter} remote environment variables!`, "Success");
         }
 
         resolve(true);
